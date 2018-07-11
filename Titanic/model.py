@@ -9,13 +9,22 @@ Age                 取全部age的median
 Sex                                             'female': 0, 'male': 1                                           
 Family                                          SibSp + Parch
 =================== =========================== =======================
-Training Model: Decision Tree
-Public Score: 0.69378
+Training
+=================== =========================== 
+Model               Public Score
+Decision Tree       0.69378
+Random Forest       0.71770
+SVM                 0.60766
+
 """
 import os
 import pandas as pd
 import numpy as np
 from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 
 train_df = pd.read_csv('dataset/train.csv', header=0)
@@ -66,16 +75,83 @@ test_df['Family'] = test_df['SibSp'] + test_df['Parch']
 
 x_train = train_df.drop(['PassengerId', 'Survived', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
 y_train = train_df['Survived']
-x_test = test_df.drop(['PassengerId', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
+# x_test = test_df.drop(['PassengerId', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
+# x_train = train_df.drop(['PassengerId', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
 
-print(x_test[(x_train['Pclass'].notnull()) & (x_test['Fare'].notnull()) & (x_test['Port'].notnull()) &
-      (x_test['Gender'].notnull()) & (x_test['Family'].notnull()) & (x_test['AgeFill'].notnull())])
+# print(x_test[(x_train['Pclass'].notnull()) & (x_test['Fare'].notnull()) & (x_test['Port'].notnull()) &
+#       (x_test['Gender'].notnull()) & (x_test['Family'].notnull()) & (x_test['AgeFill'].notnull())])
 
-clf = tree.DecisionTreeClassifier()
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import GridSearchCV
+
+skf = StratifiedKFold(n_splits=10)
+# skf.get_n_splits(x_train, y_train)
+for train_idx, test_idx in skf.split(x_train, y_train):
+    # print("TRAIN:", train_idx, "TEST:", test_idx)
+    # new_train_df = x_train.ix[train_idx]
+    # new_test_df = x_train.ix[test_idx]
+    feature_train = x_train.ix[train_idx]
+    class_train = y_train.ix[train_idx]
+    feature_test = x_train.ix[test_idx]
+    class_test = y_train.ix[test_idx]
+
+    parameters = {'kernel': ('rbf', 'linear'),
+                  'C': [32.0/16.0, 1.0/16.0, 0.25, 0.5, 1, 2, 4, 16, 32],
+                  'gamma': [32.0/16.0, 1.0/16.0, 0.25, 0.5, 1, 2, 4, 16, 32]}
+    svr = SVC()
+    clf = GridSearchCV(svr, parameters)
+
+
+
+    # clf = SVC(kernel='rbf', C=10000, gamma=0.001)
+    clf.fit(feature_train, class_train)
+    print(clf.best_estimator_)
+    pred = clf.predict(feature_test)
+    acc = accuracy_score(pred, class_test)
+    print(acc) 
+
+
+# new_train_df = train_df.iloc[:len(train_df.index)-100]
+# new_test_df = train_df.iloc[len(train_df.index)-100:]
+
+
+
+
+# x_train = new_train_df.drop(['PassengerId', 'Survived', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
+# y_train = new_train_df['Survived']
+# x_test = new_test_df.drop(['PassengerId', 'Survived', 'Name', 'Age', 'Sex', 'SibSp', 'Parch', 'Ticket', 'Cabin', 'Embarked'], axis=1)
+# y_test = new_test_df['Survived']
+
+# linear = 0.77(c=default), 0.86(c=10000) 
+# rbf = 0.66(c=10000), 0.76(c=default)
+
+# clf = SVC(kernel='rbf', C=10000, gamma=0.001)
+# clf.fit(x_train, y_train)
+# pred = clf.predict(x_test)
+# acc = accuracy_score(pred, y_test)
+# print(acc)
+# report = classification_report(pred, y_test)
+# print(report)
+# print(clf.support_vectors_)
+
+'''
+parameters = {'C':[1e3, 5e3, 1e4, 5e4, 1e5, 1, 10, 100, 1000, 10000], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1]}
+svr = SVC(kernel='rbf')
+clf = GridSearchCV(svr, parameters)
 clf = clf.fit(x_train, y_train)
-predict = clf.predict(x_test)
+
+predict = clf.predict(x_test) 
+
+acc = accuracy_score(predict, y_test)
+print(acc)
+report = classification_report(predict, y_test)
+print(report)
+'''
+
+
 output_df = pd.DataFrame(test_df['PassengerId'])
-output_df['Survived'] = pd.DataFrame(np.array(predict))
+output_df['Survived'] = pd.DataFrame(np.array(pred))
 print(output_df.info())
 print(output_df)
-output_df.to_csv('dataset/output.csv')
+output_df.to_csv('dataset/output.csv', index=False)
+
