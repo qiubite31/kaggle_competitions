@@ -69,8 +69,10 @@ def review_preprocess():
     for review in unlabeled_train['review']:
         sentences += review_to_sentences(review, tokenizer)
 
+    return sentences
 
-def train_wrod2vector():
+
+def train_wrod2vector(sentences):
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
     # 設定Word2Vector的參數
@@ -82,15 +84,17 @@ def train_wrod2vector():
 
     # 開始使用word2vec訓練模型
     print("Training model...")
-    model = word2vec.Word2Vec(sentences, workers=num_workers, \
-                size=num_features, min_count = min_word_count, \
-                window = context, sample = downsampling)
+    model = word2vec.Word2Vec(sentences, workers=num_workers,
+                              size=num_features, min_count=min_word_count,
+                              window=context, sample=downsampling)
 
     model.init_sims(replace=True)
 
     # 輸出模型
     model_name = "300features_40minwords_10context"
     model.save(model_name)
+
+    return model
 
 
 def read_word2vector_model():
@@ -99,15 +103,15 @@ def read_word2vector_model():
 
 
 def main():
-    is_proprocess = False
-    is_train = False
+    is_proprocess = True
+    is_train = True
 
     if is_proprocess:
-        review_preprocess()
+        sentences = review_preprocess()
 
     if is_train:
         # 訓練並輸出模型
-        train_wrod2vector()
+        model = train_wrod2vector(sentences)
     else:
         # 讀取訓練完的模型
         model = read_word2vector_model()
