@@ -1,8 +1,86 @@
+import os
+import re
 import numpy as np
 import pandas as pd
+from bs4 import BeautifulSoup
+from nltk.corpus import stopwords
+import nltk.data
 from gensim.models import word2vec
 
+def review_to_wordlist(review, remove_stopword=False):
+    # 使用BeautifulSoup移除HTML標籤
+    review = BeautifulSoup(review, "lxml").get_text()
+
+    # 使用re移除符號
+    review = re.sub('[^a-zA-Z]', ' ', review)
+
+    # 將內容轉成小寫
+    review = review.lower()
+
+    # 簡單的使用空格作斷詞
+    words = review.split()
+    # print(words)
+
+    if remove_stopword:
+        # 使用NLTK的停用字詞集過濾停用詞(Stop Word)
+        stop_words = set(stopwords.words('english'))
+        words = [word for word in words if word not in stop_words]
+        # print(words)
+
+    return words
+
+
+def makeFeatureVec(words, model, num_features):
+    # Function to average all of the word vectors in a given
+    # paragraph
+    #
+    # Pre-initialize an empty numpy array (for speed)
+    featureVec = np.zeros((num_features,), dtype="float32")
+    #
+    nwords = 0.
+    #
+    # Index2word is a list that contains the names of the words in
+    # the model's vocabulary. Convert it to a set, for speed
+    index2word_set = set(model.wv.index2word)
+    #
+    # Loop over each word in the review and, if it is in the model's
+    # vocaublary, add its feature vector to the total
+    for word in words:
+        if word in index2word_set:
+            nwords = nwords + 1.
+            featureVec = np.add(featureVec, model[word])
+    #
+    # Divide the result by the number of words to get the average
+    featureVec = np.divide(featureVec, nwords)
+    return featureVec
+
+
+def getAvgFeatureVecs(reviews, model, num_features):
+    # Given a set of reviews (each one a list of words), calculate
+    # the average feature vector for each one and return a 2D numpy array
+
+    # Initialize a counter
+    # counter = 0.
+
+    # Preallocate a 2D numpy array, for speed
+    reviewFeatureVecs = np.zeros((len(reviews), num_features), dtype="float32")
+
+    # Loop through the reviews
+    for review in reviews:
+        # Print a status message every 1000th review
+        # if counter % 1000. == 0.:
+        #     print("Review %d of %d" % (counter, len(reviews)))
+
+        # Call the function (defined above) that makes average feature vectors
+        reviewFeatureVecs[counter] = makeFeatureVec(review, model, num_features)
+
+        # Increment the counter
+        counter = counter + 1.
+    return reviewFeatureVecs
+
+
 def main():
+    num_features = 300
     model = word2vec.Word2Vec.load("300features_40minwords_10context")
 
     # 整個Embedding Matrix的大小(16490, 300,) 16490個詞乘上300特徵
@@ -10,6 +88,15 @@ def main():
 
     # 單個詞的向量長度(300, )
     term_shape = model['good'].shape
+
+    train = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data', 'labeledTrainData.tsv'),
+                        header=0, delimiter="\t", quoting=3)
+
+    clean_train_reviews = []
+    for review in train["review"]:
+        clean_train_reviews.append(review_to_wordlist(review, remove_stopword=True))
+
+    trainDataVecs = getAvgFeatureVecs(clean_train_reviews, model, num_features)
 
     print('end')
 
