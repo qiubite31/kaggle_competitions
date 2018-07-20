@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 import nltk.data
 from gensim.models import word2vec
+from sklearn.ensemble import RandomForestClassifier
+
 
 def review_to_wordlist(review, remove_stopword=False):
     # 使用BeautifulSoup移除HTML標籤
@@ -60,22 +62,20 @@ def getAvgFeatureVecs(reviews, model, num_features):
     # the average feature vector for each one and return a 2D numpy array
 
     # Initialize a counter
-    # counter = 0.
+    counter = 0
 
     # Preallocate a 2D numpy array, for speed
     reviewFeatureVecs = np.zeros((len(reviews), num_features), dtype="float32")
 
     # Loop through the reviews
     for review in reviews:
-        # Print a status message every 1000th review
-        # if counter % 1000. == 0.:
-        #     print("Review %d of %d" % (counter, len(reviews)))
+        if counter % 1000. == 0.:
+            print("Review %d of %d" % (counter, len(reviews)))
 
         # Call the function (defined above) that makes average feature vectors
         reviewFeatureVecs[counter] = makeFeatureVec(review, model, num_features)
 
-        # Increment the counter
-        counter = counter + 1.
+        counter = counter + 1
     return reviewFeatureVecs
 
 
@@ -91,14 +91,35 @@ def main():
 
     train = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data', 'labeledTrainData.tsv'),
                         header=0, delimiter="\t", quoting=3)
+    test = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data', 'testData.tsv'),
+                        header=0, delimiter="\t", quoting=3)
 
+    # 前處理訓練資料集的原始資料
     clean_train_reviews = []
     for review in train["review"]:
         clean_train_reviews.append(review_to_wordlist(review, remove_stopword=True))
 
+    # 將訓練資料轉成特徵向量
     trainDataVecs = getAvgFeatureVecs(clean_train_reviews, model, num_features)
 
-    print('end')
+    # 前處理測試資料集的原始資料
+    clean_test_reviews = []
+    for review in test["review"]:
+        clean_test_reviews.append(review_to_wordlist(review, remove_stopword=True))
+
+    # 將測試資料轉原特徵向量
+    testDataVecs = getAvgFeatureVecs(clean_test_reviews, model, num_features)
+
+    # 使用隨機森林建立一個分類器並輸入特徵矩陣學習
+    forest = RandomForestClassifier(n_estimators=100)
+    forest = forest.fit(trainDataVecs, train["sentiment"])
+
+    # 使用分類器進行分類後，輸出判斷結果
+    result = forest.predict(testDataVecs)
+
+    output = pd.DataFrame(data={"id": test["id"], "sentiment": result})
+    output.to_csv("Word2Vec_AverageVectors.csv", index=False, quoting=3)
+
 
 if __name__ == '__main__':
     main()
