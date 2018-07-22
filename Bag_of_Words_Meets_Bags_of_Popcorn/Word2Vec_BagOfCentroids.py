@@ -115,6 +115,7 @@ def main():
     forest = forest.fit(trainDataVecs, train["sentiment"])
 
     # 使用分類器進行分類後，輸出判斷結果
+    # 使用預處理的方法，分數為0.83436
     result = forest.predict(testDataVecs)
 
     output = pd.DataFrame(data={"id": test["id"], "sentiment": result})
