@@ -31,20 +31,24 @@ def main():
     x_df = df.drop('SalePrice', axis=1)
     y_df = df['SalePrice']
 
+    X_train, X_test, y_train, y_test = train_test_split(x_df, y_df, test_size=0.33, random_state=42)
+
     scaler = StandardScaler()
-    scaler.fit(x_df)
-    x = scaler.transform(x_df)
-    y = y_df
+    scaler.fit(X_train)
+    X_train_scaled = scaler.transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # y = y_df
     # y = y_df.as_matrix()
 
     # X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42, shuffle=True, stratify=True)
-    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
+
 
     rg = LinearRegression()
-    rg.fit(X_train, y_train.as_matrix())
+    rg.fit(X_train_scaled, y_train.as_matrix())
 
-    train_score = r2_score(y_train, rg.predict(X_train))
-    test_score = r2_score(y_test, rg.predict(X_test))
+    train_score = r2_score(y_train, rg.predict(X_train_scaled))
+    test_score = r2_score(y_test, rg.predict(X_test_scaled))
 
     rg.fit(x, y)
     train_mean_df = x_df.mean()
